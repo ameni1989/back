@@ -1,0 +1,76 @@
+const express = require("express");
+const connection = require("../config/connect");
+
+const router = express.Router();
+
+router.use(express.json());
+
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+//CREATE USER
+router.post("/create", async (req, res) => {
+  const user = req.body;
+  const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
+  // async et await utiliser pour attendre le hachage de password puisque il demande une peu de temps
+  const sqlInsert =
+    "INSERT INTO users (name, lastname,email, password) VALUES (?,?,?,?)";
+  // ?? will be replaced by string
+  connection.query(
+    sqlInsert,
+    [user.name, user.lastname, user.email, hashedPassword],
+    (err, result) => {
+      if (err) {
+        {
+          if (err.code === "ER_DUP_ENTRY") {
+            res.json({ message: "email deja existe" });
+          } else {
+            res.json(err);
+          }
+        }
+      } else {
+        res.json({ message: "Created new User" });
+      }
+    }
+  );
+});
+
+// login
+
+router.post("/login", (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+
+  const sqlSearch = "Select * from users where email = ?";
+  connection.query(sqlSearch, email, async (err, result) => {
+    if (result.length == 0) {
+      res.json({ message: "User does not exist" });
+    } else {
+      const hashedPassword = result[0].password;
+      //get the hashedPassword from result
+      if (await bcrypt.compare(password, hashedPassword)) {
+        const payload = {
+          userid: result[0].id,
+          name: result[0].name,
+          lastname: result[0].lastname,
+          email: result[0].email,
+        };
+        // secretkey:"12345678" clé secret qui permet de verifier si le token a été modifié ou non lors de l'envoi
+        // token= jeton ou droit d'accès
+
+        // token est composé de trois parties:
+        // 1ere partie contient l'entete de token (contient  les informations generales du token)
+        // 2eme partie contient l'objet payload chiffré
+        // 3eme partie contient la clé de secret
+        const token = jwt.sign(payload, "12345678", { expiresIn: "1h" });
+
+        res.json({ message: "Login Successful", token: token });
+      } else {
+        res.json({ message: "Password incorrect" });
+      }
+    }
+  });
+});
+
+module.exports = router;
