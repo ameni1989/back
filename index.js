@@ -3,20 +3,8 @@ const app = express();
 
 const connection = require("./config/connect");
 
-// importer cors
-const cors = require("cors");
-app.use(cors());
 
-const formateur = require("./routes/formateurs");
-app.use("/formateur", formateur);
-const formation = require("./routes/formations");
-app.use("/formation", formation);
-const user = require("./routes/users");
-app.use("/user", user);
-
-console.log("hello developpeurs nodejs");
-
-app.get("/hello", (req, res) => {
+app.get("/", (req, res) => {
   // envoyer les données au navigateur
   console.log("hello les devs angular node js");
 
